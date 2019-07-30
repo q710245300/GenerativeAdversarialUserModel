@@ -16,7 +16,7 @@ def multithread_compute_vali():
     vali_sum = [0.0, 0.0, 0.0]
     vali_cnt = 0
     threads = []
-    for ii in xrange(cmd_args.num_thread):
+    for ii in range(cmd_args.num_thread):
         thread = threading.Thread(target=vali_eval, args=(1, ii))
         thread.start()
         threads.append(thread)
@@ -71,14 +71,14 @@ def multithread_compute_test():
 
     num_sets = 1 * cmd_args.num_thread
 
-    thread_dist = [[] for _ in xrange(cmd_args.num_thread)]
-    for ii in xrange(num_sets):
+    thread_dist = [[] for _ in range(cmd_args.num_thread)]
+    for ii in range(num_sets):
         thread_dist[ii % cmd_args.num_thread].append(ii)
 
     test_sum = [0.0, 0.0, 0.0]
     test_cnt = 0
     threads = []
-    for ii in xrange(cmd_args.num_thread):
+    for ii in range(cmd_args.num_thread):
         thread = threading.Thread(target=test_eval, args=(1, thread_dist[ii]))
         thread.start()
         threads.append(thread)
@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
     saver = tf.train.Saver(max_to_keep=None)
 
-    for i in xrange(cmd_args.num_itrs):
+    for i in range(cmd_args.num_itrs):
         # training_start_point = (i * cmd_args.batch_size) % (len(dataset.train_user))
         # training_user = dataset.train_user[training_start_point: min(training_start_point + cmd_args.batch_size, len(dataset.train_user))]
 

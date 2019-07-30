@@ -40,14 +40,14 @@ class Dataset(object):
             for disp in d_b[1]:
                 k_max = max(k_max, len(disp))
 
-        self.data_click = [[] for x in xrange(self.size_user)]
-        self.data_disp = [[] for x in xrange(self.size_user)]
+        self.data_click = [[] for x in range(self.size_user)]
+        self.data_disp = [[] for x in range(self.size_user)]
         self.data_time = np.zeros(self.size_user, dtype=np.int)
         self.data_news_cnt = np.zeros(self.size_user, dtype=np.int)
-        self.feature = [[] for x in xrange(self.size_user)]
-        self.feature_click = [[] for x in xrange(self.size_user)]
+        self.feature = [[] for x in range(self.size_user)]
+        self.feature_click = [[] for x in range(self.size_user)]
 
-        for user in xrange(self.size_user):
+        for user in range(self.size_user):
             # (1) count number of clicks
             click_t = 0
             num_events = len(data_behavior[user][1])
@@ -57,7 +57,7 @@ class Dataset(object):
             news_dict = {}
             self.feature_click[user] = np.zeros([click_t, self.f_dim])
             click_t = 0
-            for event in xrange(num_events):
+            for event in range(num_events):
                 disp_list = data_behavior[user][1][event]
                 pick_id = data_behavior[user][2][event]
                 for id in disp_list:
@@ -108,7 +108,7 @@ class Dataset(object):
 
             for u in user_set:
                 t_indice = []
-                for kk in xrange(min(self.band_size-1, self.data_time[u]-1)):
+                for kk in range(min(self.band_size-1, self.data_time[u]-1)):
                     t_indice += map(lambda x: [x + kk+1 + sec_cnt_x, x + sec_cnt_x], np.arange(self.data_time[u] - (kk+1)))
 
                 tril_indice += t_indice
@@ -153,7 +153,7 @@ class Dataset(object):
             user_time_dense = np.zeros([size_user, max_time], dtype=np.float32)
             click_feature = np.zeros([max_time, size_user, self.f_dim])
 
-            for u_idx in xrange(size_user):
+            for u_idx in range(size_user):
                 u = user_set[u_idx]
 
                 u_t_clickid_tmp = []
@@ -204,10 +204,10 @@ class Dataset(object):
         user_time_dense = np.zeros([size_user, max_time], dtype=np.float32)
         click_feature = np.zeros([max_time, size_user, self.f_dim])
 
-        for u_idx in xrange(size_user):
+        for u_idx in range(size_user):
             u = user_set[u_idx]
 
-            item_cnt = [{} for _ in xrange(self.data_time[u])]
+            item_cnt = [{} for _ in range(self.data_time[u])]
 
             u_t_clickid_tmp = []
             u_t_dispid_tmp = []
@@ -239,20 +239,20 @@ class Dataset(object):
                u_t_clickid, user_time_dense
 
     def prepare_validation_data_L2(self, num_sets, v_user):
-        vali_thread_u = [[] for _ in xrange(num_sets)]
-        size_user_v = [[] for _ in xrange(num_sets)]
-        max_time_v = [[] for _ in xrange(num_sets)]
-        news_cnt_short_v = [[] for _ in xrange(num_sets)]
-        u_t_dispid_v = [[] for _ in xrange(num_sets)]
-        u_t_dispid_split_ut_v = [[] for _ in xrange(num_sets)]
-        u_t_dispid_feature_v = [[] for _ in xrange(num_sets)]
-        click_feature_v = [[] for _ in xrange(num_sets)]
-        click_sub_index_v = [[] for _ in xrange(num_sets)]
-        u_t_clickid_v = [[] for _ in xrange(num_sets)]
-        ut_dense_v = [[] for _ in xrange(num_sets)]
-        for ii in xrange(len(v_user)):
+        vali_thread_u = [[] for _ in range(num_sets)]
+        size_user_v = [[] for _ in range(num_sets)]
+        max_time_v = [[] for _ in range(num_sets)]
+        news_cnt_short_v = [[] for _ in range(num_sets)]
+        u_t_dispid_v = [[] for _ in range(num_sets)]
+        u_t_dispid_split_ut_v = [[] for _ in range(num_sets)]
+        u_t_dispid_feature_v = [[] for _ in range(num_sets)]
+        click_feature_v = [[] for _ in range(num_sets)]
+        click_sub_index_v = [[] for _ in range(num_sets)]
+        u_t_clickid_v = [[] for _ in range(num_sets)]
+        ut_dense_v = [[] for _ in range(num_sets)]
+        for ii in range(len(v_user)):
             vali_thread_u[ii % num_sets].append(v_user[ii])
-        for ii in xrange(num_sets):
+        for ii in range(num_sets):
             size_user_v[ii], max_time_v[ii], news_cnt_short_v[ii], u_t_dispid_v[ii],\
             u_t_dispid_split_ut_v[ii], u_t_dispid_feature_v[ii], click_feature_v[ii], \
             click_sub_index_v[ii], u_t_clickid_v[ii], ut_dense_v[ii] = self.data_process_for_placeholder_L2(vali_thread_u[ii])
@@ -262,20 +262,20 @@ class Dataset(object):
     def prepare_validation_data(self, num_sets, v_user):
 
         if self.model_type == 'PW':
-            vali_thread_u = [[] for _ in xrange(num_sets)]
-            click_2d_v = [[] for _ in xrange(num_sets)]
-            disp_2d_v = [[] for _ in xrange(num_sets)]
-            feature_v = [[] for _ in xrange(num_sets)]
-            sec_cnt_v = [[] for _ in xrange(num_sets)]
-            tril_ind_v = [[] for _ in xrange(num_sets)]
-            tril_value_ind_v = [[] for _ in xrange(num_sets)]
-            disp_2d_split_sec_v = [[] for _ in xrange(num_sets)]
-            feature_clicked_v = [[] for _ in xrange(num_sets)]
-            news_cnt_short_v = [[] for _ in xrange(num_sets)]
-            click_sub_index_2d_v = [[] for _ in xrange(num_sets)]
-            for ii in xrange(len(v_user)):
+            vali_thread_u = [[] for _ in range(num_sets)]
+            click_2d_v = [[] for _ in range(num_sets)]
+            disp_2d_v = [[] for _ in range(num_sets)]
+            feature_v = [[] for _ in range(num_sets)]
+            sec_cnt_v = [[] for _ in range(num_sets)]
+            tril_ind_v = [[] for _ in range(num_sets)]
+            tril_value_ind_v = [[] for _ in range(num_sets)]
+            disp_2d_split_sec_v = [[] for _ in range(num_sets)]
+            feature_clicked_v = [[] for _ in range(num_sets)]
+            news_cnt_short_v = [[] for _ in range(num_sets)]
+            click_sub_index_2d_v = [[] for _ in range(num_sets)]
+            for ii in range(len(v_user)):
                 vali_thread_u[ii % num_sets].append(v_user[ii])
-            for ii in xrange(num_sets):
+            for ii in range(num_sets):
                 click_2d_v[ii], disp_2d_v[ii], feature_v[ii], sec_cnt_v[ii], tril_ind_v[ii], tril_value_ind_v[ii], \
                 disp_2d_split_sec_v[ii], news_cnt_short_v[ii], click_sub_index_2d_v[ii], feature_clicked_v[ii] = self.data_process_for_placeholder(vali_thread_u[ii])
             return vali_thread_u, click_2d_v, disp_2d_v, feature_v, sec_cnt_v, tril_ind_v, tril_value_ind_v, \
@@ -284,20 +284,20 @@ class Dataset(object):
         else:
             if self.model_type != 'LSTM':
                 print('model type not supported. using LSTM')
-            vali_thread_u = [[] for _ in xrange(num_sets)]
-            size_user_v = [[] for _ in xrange(num_sets)]
-            max_time_v = [[] for _ in xrange(num_sets)]
-            news_cnt_short_v = [[] for _ in xrange(num_sets)]
-            u_t_dispid_v = [[] for _ in xrange(num_sets)]
-            u_t_dispid_split_ut_v = [[] for _ in xrange(num_sets)]
-            u_t_dispid_feature_v = [[] for _ in xrange(num_sets)]
-            click_feature_v = [[] for _ in xrange(num_sets)]
-            click_sub_index_v = [[] for _ in xrange(num_sets)]
-            u_t_clickid_v = [[] for _ in xrange(num_sets)]
-            ut_dense_v = [[] for _ in xrange(num_sets)]
-            for ii in xrange(len(v_user)):
+            vali_thread_u = [[] for _ in range(num_sets)]
+            size_user_v = [[] for _ in range(num_sets)]
+            max_time_v = [[] for _ in range(num_sets)]
+            news_cnt_short_v = [[] for _ in range(num_sets)]
+            u_t_dispid_v = [[] for _ in range(num_sets)]
+            u_t_dispid_split_ut_v = [[] for _ in range(num_sets)]
+            u_t_dispid_feature_v = [[] for _ in range(num_sets)]
+            click_feature_v = [[] for _ in range(num_sets)]
+            click_sub_index_v = [[] for _ in range(num_sets)]
+            u_t_clickid_v = [[] for _ in range(num_sets)]
+            ut_dense_v = [[] for _ in range(num_sets)]
+            for ii in range(len(v_user)):
                 vali_thread_u[ii % num_sets].append(v_user[ii])
-            for ii in xrange(num_sets):
+            for ii in range(num_sets):
                 size_user_v[ii], max_time_v[ii], news_cnt_short_v[ii], u_t_dispid_v[ii],\
                 u_t_dispid_split_ut_v[ii], u_t_dispid_feature_v[ii], click_feature_v[ii], \
                 click_sub_index_v[ii], u_t_clickid_v[ii], ut_dense_v[ii] = self.data_process_for_placeholder(vali_thread_u[ii])

@@ -16,7 +16,7 @@ def multithread_compute_vali():
     vali_sum = [0.0, 0.0, 0.0, 0.0]
     vali_cnt = 0
     threads = []
-    for ii in xrange(cmd_args.num_thread):
+    for ii in range(cmd_args.num_thread):
         thread = threading.Thread(target=vali_eval, args=(1, ii))
         thread.start()
         threads.append(thread)
@@ -55,14 +55,14 @@ def multithread_compute_test():
 
     num_sets = cmd_args.num_thread
 
-    thread_dist = [[] for _ in xrange(cmd_args.num_thread)]
-    for ii in xrange(num_sets):
+    thread_dist = [[] for _ in range(cmd_args.num_thread)]
+    for ii in range(num_sets):
         thread_dist[ii % cmd_args.num_thread].append(ii)
 
     test_sum = [0.0, 0.0, 0.0, 0.0]
     test_cnt = 0
     threads = []
-    for ii in xrange(cmd_args.num_thread):
+    for ii in range(cmd_args.num_thread):
         thread = threading.Thread(target=test_eval, args=(1, thread_dist[ii]))
         thread.start()
         threads.append(thread)
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     if not os.path.exists(vali_path):
         os.makedirs(vali_path)
 
-    for i in xrange(iterations):
+    for i in range(iterations):
 
         training_user = np.random.choice(len(dataset.train_user), batch, replace=False)
         if i == 0:

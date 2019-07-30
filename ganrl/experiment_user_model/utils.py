@@ -225,8 +225,8 @@ class UserModelPW(object):
 
         # (1) history feature --- net ---> clicked_feature
         # (1) construct cumulative history
-        click_history = [[] for _ in xrange(self.pw_dim)]
-        for ii in xrange(self.pw_dim):
+        click_history = [[] for _ in range(self.pw_dim)]
+        for ii in range(self.pw_dim):
             position_weight = tf.get_variable('p_w'+str(ii), [self.band_size], initializer=tf.constant_initializer(0.0001))
             cumsum_tril_value = tf.gather(position_weight, self.placeholder['cumsum_tril_value_indices'])
             cumsum_tril_matrix = tf.SparseTensor(self.placeholder['cumsum_tril_indices'], cumsum_tril_value,
