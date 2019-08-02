@@ -15,7 +15,13 @@ class Dataset(object):
 
         data_filename = os.path.join(args.data_folder, args.dataset+'.pkl')
         f = open(data_filename, 'rb')
+        # 将两个对象取出
+        # data_behavior[user][0] is user_id
+        # data_behavior[user][1][t] is displayed list at time t
+        # data_behavior[user][2][t] is picked id at time t
         data_behavior = pickle.load(f)
+        # item_feature是长宽都是item数量的一个对角矩阵
+        # 作为每个item的one-hot编码了
         item_feature = pickle.load(f)
         f.close()
         # data_behavior[user][0] is user_id
@@ -26,6 +32,7 @@ class Dataset(object):
         self.f_dim = len(item_feature[0])
 
         # Load user splits
+        # user的id
         filename = os.path.join(self.data_folder, self.dataset+'-split.pkl')
         pkl_file = open(filename, 'rb')
         self.train_user = pickle.load(pkl_file)
@@ -35,6 +42,7 @@ class Dataset(object):
 
         # Process data
 
+        # 找到最长的display_set包含的item数量
         k_max = 0
         for d_b in data_behavior:
             for disp in d_b[1]:
@@ -42,21 +50,27 @@ class Dataset(object):
 
         self.data_click = [[] for x in range(self.size_user)]
         self.data_disp = [[] for x in range(self.size_user)]
+        # 保存每个user点击的次数
         self.data_time = np.zeros(self.size_user, dtype=np.int)
+        # user内item.unique()的数量
         self.data_news_cnt = np.zeros(self.size_user, dtype=np.int)
+        # user所有流览过加上点击过的商品的one-hot编码
         self.feature = [[] for x in range(self.size_user)]
+        # user所有点击的商品的one-hot编码
         self.feature_click = [[] for x in range(self.size_user)]
 
         for user in range(self.size_user):
-            # (1) count number of clicks
+            # (1) count number of clicks, 记录每个用户发生了几次点击(购买)行为
             click_t = 0
             num_events = len(data_behavior[user][1])
             click_t += num_events
             self.data_time[user] = click_t
             # (2)
+            # 在一个user内新item第一次出现的位置
             news_dict = {}
             self.feature_click[user] = np.zeros([click_t, self.f_dim])
             click_t = 0
+            # 每次event对应一次点击事件，即一个user可能由多个event，一个event对应一个display set，一个点击的item
             for event in range(num_events):
                 disp_list = data_behavior[user][1][event]
                 pick_id = data_behavior[user][2][event]
@@ -64,14 +78,19 @@ class Dataset(object):
                     if id not in news_dict:
                         news_dict[id] = len(news_dict)  # for each user, news id start from 0
                 id = pick_id
+                # ?
                 self.data_click[user].append([click_t, news_dict[id]])
+                # 一个user发生的每次点击事件的item one-hot编码
                 self.feature_click[user][click_t] = item_feature[id]
+                # ？将用户的每次事件的display_set保存起来
                 for idd in disp_list:
                     self.data_disp[user].append([click_t, news_dict[idd]])
                 click_t += 1  # splitter a event with 2 clickings to 2 events
 
+            # 每个user发生的几次事件内部的item.unique的数量
             self.data_news_cnt[user] = len(news_dict)
 
+            # 行：user内item.unique()对应的数量, 列: item的one_hot编码的维度(即item的数量) 全零的numpy矩阵
             self.feature[user] = np.zeros([self.data_news_cnt[user], self.f_dim])
 
             for id in news_dict:
@@ -80,6 +99,7 @@ class Dataset(object):
             self.feature_click[user] = self.feature_click[user].tolist()
         self.max_disp_size = k_max
 
+    # 因为train_user, vali_user和test_user内部保存的都是user的编号，那么想要将user打乱，就把编号打乱再按长度抽取就可以了
     def random_split_user(self):
         num_users = len(self.train_user) + len(self.vali_user) + len(self.test_user)
         shuffle_order = np.arange(num_users)
@@ -88,6 +108,7 @@ class Dataset(object):
         self.vali_user = shuffle_order[len(self.train_user):len(self.train_user)+len(self.vali_user)].tolist()
         self.test_user = shuffle_order[len(self.train_user)+len(self.vali_user):].tolist()
 
+    # user_set是batch内的user编号
     def data_process_for_placeholder(self, user_set):
 
         if self.model_type == 'PW':
@@ -106,28 +127,43 @@ class Dataset(object):
             disp_current_feature_x = []
             click_sub_index_2d = []
 
+            # test
+            test = []
+
             for u in user_set:
                 t_indice = []
+                # 因为本文中self.band_size定义成m，所以按照论文中写的，状态是(t-m)到(t-1)的item，所以
                 for kk in range(min(self.band_size-1, self.data_time[u]-1)):
                     t_indice += map(lambda x: [x + kk+1 + sec_cnt_x, x + sec_cnt_x], np.arange(self.data_time[u] - (kk+1)))
 
                 tril_indice += t_indice
                 tril_value_indice += map(lambda x: (x[0] - x[1] - 1), t_indice)
 
-                click_2d_tmp = map(lambda x: [x[0] + sec_cnt_x, x[1]], self.data_click[u])
+                # 将所有的user的点击记录都取出来放在click_2d_x中
+                click_2d_tmp = list(map(lambda x: [x[0] + sec_cnt_x, x[1]], self.data_click[u]))
                 click_2d_x += click_2d_tmp
 
-                disp_2d_tmp = map(lambda x: [x[0] + sec_cnt_x, x[1]], self.data_disp[u])
-                click_sub_index_tmp = map(lambda x: disp_2d_tmp.index(x), click_2d_tmp)
+                disp_2d_tmp = list(map(lambda x: [x[0] + sec_cnt_x, x[1]], self.data_disp[u]))
+                click_sub_index_tmp = list(map(lambda x: disp_2d_tmp.index(x), click_2d_tmp))
 
+
+
+                # 保存了click_item在整个Time(每个Time长度为推荐列表K)的全局位置
                 click_sub_index_2d += map(lambda x: x+len(disp_2d_x), click_sub_index_tmp)
+                # 将所有display set对应的item的出现位置记录下来
                 disp_2d_x += disp_2d_tmp
+                # 把disp列表的的Time单独从self.data_disp[u]中拿出来
                 disp_2d_split_sec += map(lambda x: x[0] + sec_cnt_x, self.data_disp[u])
 
+                # 把每个user发生click(time改变)的个数累加，使得batch中的每个user之间的time连续发生
                 sec_cnt_x += self.data_time[u]
+                # 好像是保存了user中出现不同item数量最多的数量
                 news_cnt_short_x = max(news_cnt_short_x, self.data_news_cnt[u])
+                # 好像根本没用
                 news_cnt_x += self.data_news_cnt[u]
+                # user所有浏览(/点击)记录的item的one-hot编码，相当于就是self.feature[u]未去重的值
                 disp_current_feature_x += map(lambda x: self.feature[u][x], [idd[1] for idd in self.data_disp[u]])
+                # 点击的item的one-hot编码
                 feature_clicked_x += self.feature_click[u]
 
             return click_2d_x, disp_2d_x, \

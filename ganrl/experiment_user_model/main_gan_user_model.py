@@ -88,7 +88,7 @@ def multithread_compute_test():
 
     return test_sum[0]/test_cnt, test_sum[1]/test_cnt, test_sum[2]/test_cnt
 
-
+# test
 def test_eval(xx, thread_dist):
     global test_sum, test_cnt
     test_thread_eval = [0.0, 0.0, 0.0]
@@ -218,6 +218,29 @@ if __name__ == '__main__':
         elif cmd_args.user_model == 'PW':
             click_2d, disp_2d, feature_tr, sec_cnt, tril_ind, tril_value_ind, disp_2d_split_sect, \
             news_cnt_sht, click_2d_subind, feature_clicked_tr = dataset.data_process_for_placeholder(training_user)
+
+            # ###############################################
+            # a = sess.run([user_model.sum_click_u_bar_ut, user_model.sum_exp_disp_ubar_ut,
+            #               user_model.cumsum_tril_value, user_model.concat_history,
+            #               user_model.position_weight, user_model.u_disp,
+            #               user_model.sum_exp_disp_ubar_ut,
+            #               user_model.exp_disp_ubar_ut,
+            #               user_model.dense_exp_disp_util,
+            #               user_model.argmax_disp,
+            #               user_model.click_tensor,
+            #               ],
+            #              feed_dict={user_model.placeholder['disp_current_feature']: feature_tr,
+            #                                user_model.placeholder['item_size']: news_cnt_sht,
+            #                                user_model.placeholder['section_length']: sec_cnt,
+            #                                user_model.placeholder['click_indices']: click_2d,
+            #                                user_model.placeholder['click_values']: np.ones(len(click_2d), dtype=np.float32),
+            #                                user_model.placeholder['disp_indices']: np.array(disp_2d),
+            #                                user_model.placeholder['cumsum_tril_indices']: tril_ind,
+            #                                user_model.placeholder['cumsum_tril_value_indices']: np.array(tril_value_ind, dtype=np.int64),
+            #                                user_model.placeholder['click_2d_subindex']: click_2d_subind,
+            #                                user_model.placeholder['disp_2d_split_sec_ind']: disp_2d_split_sect,
+            #                                user_model.placeholder['Xs_clicked']: feature_clicked_tr})
+            # ################################################
 
             sess.run(train_opt, feed_dict={user_model.placeholder['disp_current_feature']: feature_tr,
                                            user_model.placeholder['item_size']: news_cnt_sht,

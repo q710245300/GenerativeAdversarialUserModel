@@ -8,8 +8,8 @@ import numpy as np
 
 cmd_opt = argparse.ArgumentParser(description='Argparser for GAN user model for RL based recommendation')
 
-cmd_opt.add_argument('-data_folder', type=str, default=None, help='dataset folder')
-cmd_opt.add_argument('-dataset', type=str, default=None, help='choose rsc, tb, or yelp')
+cmd_opt.add_argument('-data_folder', type=str, default='../../dropbox/', help='dataset folder')
+cmd_opt.add_argument('-dataset', type=str, default='tb', help='choose rsc, tb, or yelp')
 cmd_opt.add_argument('-save_dir', type=str, default='./scratch', help='save folder')
 
 cmd_opt.add_argument('-resplit', type=eval, default=False)
@@ -24,7 +24,7 @@ cmd_opt.add_argument('-pw_dim', type=int, default=4, help='position weight dim')
 cmd_opt.add_argument('-pw_band_size', type=int, default=20, help='position weight banded size (i.e. length of history)')
 
 cmd_opt.add_argument('-dims', type=str, default='64-64')
-cmd_opt.add_argument('-user_model', type=str, default='LSTM', help='architecture choice: LSTM or PW')
+cmd_opt.add_argument('-user_model', type=str, default='PW', help='architecture choice: LSTM or PW')
 
 
 cmd_args = cmd_opt.parse_args()

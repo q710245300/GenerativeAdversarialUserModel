@@ -1,11 +1,13 @@
 import tensorflow as tf
 
-
 def mlp(x, hidden_dims, output_dim, activation, sd, act_last=False):
+    # map(function, iterable) 会根据提供的函数对指定序列做映射。
+    # 即先将用字符串储存的神经网络层数和神经元数split开，然后用map函数转换成int类型，最后放在tuple里
     hidden_dims = tuple(map(int, hidden_dims.split("-")))
     for h in hidden_dims:
         x = tf.layers.dense(x, h, activation=activation, trainable=True,
                             kernel_initializer=tf.truncated_normal_initializer(stddev=sd))
+    # act_last，要不要对最后一层加激活层函数
     if act_last:
         return tf.layers.dense(x, output_dim, activation=activation, trainable=True,
                                kernel_initializer=tf.truncated_normal_initializer(stddev=sd))
@@ -195,14 +197,19 @@ class UserModelLSTM(object):
 class UserModelPW(object):
 
     def __init__(self, f_dim, args):
+        # d
         self.f_dim = f_dim
         self.placeholder = {}
         self.hidden_dims = args.dims
         self.lr = args.learning_rate
+        # n
         self.pw_dim = args.pw_dim
+        # position weight banded size (i.e. length of history)
         self.band_size = args.pw_band_size
 
     def construct_placeholder(self):
+        # disp := display
+        # disp_current_feature 当前display set A
         self.placeholder['disp_current_feature'] = tf.placeholder(dtype=tf.float32, shape=[None, self.f_dim])
         self.placeholder['Xs_clicked'] = tf.placeholder(dtype=tf.float32, shape=[None, self.f_dim])
 
@@ -227,41 +234,57 @@ class UserModelPW(object):
         # (1) construct cumulative history
         click_history = [[] for _ in range(self.pw_dim)]
         for ii in range(self.pw_dim):
-            position_weight = tf.get_variable('p_w'+str(ii), [self.band_size], initializer=tf.constant_initializer(0.0001))
-            cumsum_tril_value = tf.gather(position_weight, self.placeholder['cumsum_tril_value_indices'])
-            cumsum_tril_matrix = tf.SparseTensor(self.placeholder['cumsum_tril_indices'], cumsum_tril_value,
+            # 长度为20，内容为0.0001的常数矩阵
+            self.position_weight = tf.get_variable('p_w'+str(ii), [self.band_size], initializer=tf.constant_initializer(0.0001))
+            self.cumsum_tril_value = tf.gather(self.position_weight, self.placeholder['cumsum_tril_value_indices'])
+            # tf.SparseTensor(indices: 指定非零元素的位置, values: 对应位置个数的值, dense_shape: 代表Tensor的维度)
+            cumsum_tril_matrix = tf.SparseTensor(self.placeholder['cumsum_tril_indices'], self.cumsum_tril_value,
                                                  [self.placeholder['section_length'], self.placeholder['section_length']])  # sec by sec
+            # tf.sparse_tensor_dense_matmul(sp_a, b), a, b相乘
             click_history[ii] = tf.sparse_tensor_dense_matmul(cumsum_tril_matrix, self.placeholder['Xs_clicked'])  # Xs_clicked: section by _f_dim
-        concat_history = tf.concat(click_history, axis=1)
-        disp_history_feature = tf.gather(concat_history, self.placeholder['disp_2d_split_sec_ind'])
+        self.concat_history = tf.concat(click_history, axis=1)
+        disp_history_feature = tf.gather(self.concat_history, self.placeholder['disp_2d_split_sec_ind'])
 
         # (4) combine features
+        # [s^t, f_{a^t}^t]
         concat_disp_features = tf.reshape(tf.concat([disp_history_feature, self.placeholder['disp_current_feature']], axis=1),
                                           [-1, self.f_dim * self.pw_dim + self.f_dim])
 
         # (5) compute utility
-        u_disp = mlp(concat_disp_features, self.hidden_dims, 1, tf.nn.elu, 1e-3, act_last=False)
+        # \phi网络的输出,维度是当前train_set中所有user浏览物品的数量和
+        self.u_disp = mlp(concat_disp_features, self.hidden_dims, 1, tf.nn.elu, 1e-3, act_last=False)
 
         # (5)
-        exp_u_disp = tf.exp(u_disp)
-        sum_exp_disp_ubar_ut = tf.segment_sum(exp_u_disp, self.placeholder['disp_2d_split_sec_ind'])
-        sum_click_u_bar_ut = tf.gather(u_disp, self.placeholder['click_2d_subindex'])
+        exp_u_disp = tf.exp(self.u_disp)
+        # tf.segment_sum(data, segment_ids)能够将Tensor分段并且求和，'disp_2d_split_sec_ind'记录的是train_set中的Time列，所以最终的值就是每个display_set的最终值累加
+        self.sum_exp_disp_ubar_ut = tf.segment_sum(exp_u_disp, self.placeholder['disp_2d_split_sec_ind'])
+        # 现在是空的
+        self.sum_click_u_bar_ut = tf.gather(self.u_disp, self.placeholder['click_2d_subindex'])
 
         # (6) loss and precision
-        click_tensor = tf.SparseTensor(self.placeholder['click_indices'], self.placeholder['click_values'], denseshape)
-        click_cnt = tf.sparse_reduce_sum(click_tensor, axis=1)
-        loss_sum = tf.reduce_sum(- sum_click_u_bar_ut + tf.log(sum_exp_disp_ubar_ut + 1))
+        self.click_tensor = tf.SparseTensor(self.placeholder['click_indices'], self.placeholder['click_values'], denseshape)
+        click_cnt = tf.sparse_reduce_sum(self.click_tensor, axis=1)
+        # 看不出来为什么要加1
+        loss_sum = tf.reduce_sum(- self.sum_click_u_bar_ut + tf.log(self.sum_exp_disp_ubar_ut + 1))
+        # event_cnt = T,loss公式中
         event_cnt = tf.reduce_sum(click_cnt)
         loss = loss_sum / event_cnt
 
-        exp_disp_ubar_ut = tf.SparseTensor(self.placeholder['disp_indices'], tf.reshape(exp_u_disp, [-1]), denseshape)
-        dense_exp_disp_util = tf.sparse_tensor_to_dense(exp_disp_ubar_ut, default_value=0.0, validate_indices=False)
-        argmax_click = tf.argmax(tf.sparse_tensor_to_dense(click_tensor, default_value=0.0), axis=1)
-        argmax_disp = tf.argmax(dense_exp_disp_util, axis=1)
+        # tf.reshape(exp_u_disp, [-1])转置,sarpse_tensor，index:指定非零元素位置,values:指定值,denseshape:矩阵维度
+        #self.exp_disp_ubar_ut将display中每个item对应的
+        self.exp_disp_ubar_ut = tf.SparseTensor(self.placeholder['disp_indices'], tf.reshape(exp_u_disp, [-1]), denseshape)
+        # 好像是将空值填充为零
+        self.dense_exp_disp_util = tf.sparse_tensor_to_dense(self.exp_disp_ubar_ut, default_value=0.0, validate_indices=False)
+        # 真实的用户点击
+        argmax_click = tf.argmax(tf.sparse_tensor_to_dense(self.click_tensor, default_value=0.0), axis=1)
+        # usermodel预测的用户点击：将每个Time对应的最大的click的序号给出
+        self.argmax_disp = tf.argmax(self.dense_exp_disp_util, axis=1)
 
-        top_2_disp = tf.nn.top_k(dense_exp_disp_util, k=2, sorted=False)[1]
+        top_2_disp = tf.nn.top_k(self.dense_exp_disp_util, k=2, sorted=False)[1]
 
-        precision_1_sum = tf.reduce_sum(tf.cast(tf.equal(argmax_click, argmax_disp), tf.float32))
+        # tf.equal()返回与矩阵大小相同元素为bool的矩阵，相等的地方是True，
+        # tf.cast类型转换，将bool类型转换成float类型
+        precision_1_sum = tf.reduce_sum(tf.cast(tf.equal(argmax_click, self.argmax_disp), tf.float32))
         precision_1 = precision_1_sum / event_cnt
         precision_2_sum = tf.reduce_sum(tf.cast(tf.equal(tf.reshape(argmax_click, [-1, 1]), tf.cast(top_2_disp, tf.int64)), tf.float32))
         precision_2 = precision_2_sum / event_cnt
