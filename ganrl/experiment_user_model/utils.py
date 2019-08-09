@@ -234,41 +234,45 @@ class UserModelPW(object):
         # (1) construct cumulative history
         click_history = [[] for _ in range(self.pw_dim)]
         for ii in range(self.pw_dim):
-            # 长度为20，内容为0.0001的常数矩阵
+            # 长度为20，初始化为内容为0.0001的常数矩阵，但是也会随着网络进行参数更新
             self.position_weight = tf.get_variable('p_w'+str(ii), [self.band_size], initializer=tf.constant_initializer(0.0001))
+            # tf.gather(params:值数组, indices:序号)按照序号从params取值
+            # 将状态中的每个item的点击的先后转换成位置权重
             self.cumsum_tril_value = tf.gather(self.position_weight, self.placeholder['cumsum_tril_value_indices'])
             # tf.SparseTensor(indices: 指定非零元素的位置, values: 对应位置个数的值, dense_shape: 代表Tensor的维度)
-            cumsum_tril_matrix = tf.SparseTensor(self.placeholder['cumsum_tril_indices'], self.cumsum_tril_value,
+            # 其中self.ph['section_length']等于sec_cnt_x即训练集的Tau的个数
+            self.cumsum_tril_matrix = tf.SparseTensor(self.placeholder['cumsum_tril_indices'], self.cumsum_tril_value,
                                                  [self.placeholder['section_length'], self.placeholder['section_length']])  # sec by sec
             # tf.sparse_tensor_dense_matmul(sp_a, b), a, b相乘
-            click_history[ii] = tf.sparse_tensor_dense_matmul(cumsum_tril_matrix, self.placeholder['Xs_clicked'])  # Xs_clicked: section by _f_dim
+            click_history[ii] = tf.sparse_tensor_dense_matmul(self.cumsum_tril_matrix, self.placeholder['Xs_clicked'])  # Xs_clicked: section by _f_dim
         self.concat_history = tf.concat(click_history, axis=1)
-        disp_history_feature = tf.gather(self.concat_history, self.placeholder['disp_2d_split_sec_ind'])
+        # 将生成的s^t扩展给每个tau
+        self.disp_history_feature = tf.gather(self.concat_history, self.placeholder['disp_2d_split_sec_ind'])
 
         # (4) combine features
-        # [s^t, f_{a^t}^t]
-        concat_disp_features = tf.reshape(tf.concat([disp_history_feature, self.placeholder['disp_current_feature']], axis=1),
+        # concat[s^t, A^t]
+        self.concat_disp_features = tf.reshape(tf.concat([self.disp_history_feature, self.placeholder['disp_current_feature']], axis=1),
                                           [-1, self.f_dim * self.pw_dim + self.f_dim])
 
         # (5) compute utility
         # \phi网络的输出,维度是当前train_set中所有user浏览物品的数量和
-        self.u_disp = mlp(concat_disp_features, self.hidden_dims, 1, tf.nn.elu, 1e-3, act_last=False)
+        self.u_disp = mlp(self.concat_disp_features, self.hidden_dims, 1, tf.nn.elu, 1e-3, act_last=False)
 
         # (5)
         exp_u_disp = tf.exp(self.u_disp)
-        # tf.segment_sum(data, segment_ids)能够将Tensor分段并且求和，'disp_2d_split_sec_ind'记录的是train_set中的Time列，所以最终的值就是每个display_set的最终值累加
+        # tf.segment_sum(data, segment_ids)能够将Tensor分段并且求和，'disp_2d_split_sec_ind'记录的是train_set中的Time列，所以最终的值就是每个display_set(一个Time就是一个displayset)的最终值累加
         self.sum_exp_disp_ubar_ut = tf.segment_sum(exp_u_disp, self.placeholder['disp_2d_split_sec_ind'])
-        # 现在是空的
+        # 点击的item的r值
         self.sum_click_u_bar_ut = tf.gather(self.u_disp, self.placeholder['click_2d_subindex'])
 
         # (6) loss and precision
         self.click_tensor = tf.SparseTensor(self.placeholder['click_indices'], self.placeholder['click_values'], denseshape)
-        click_cnt = tf.sparse_reduce_sum(self.click_tensor, axis=1)
+        self.click_cnt = tf.sparse_reduce_sum(self.click_tensor, axis=1)
         # 看不出来为什么要加1
         loss_sum = tf.reduce_sum(- self.sum_click_u_bar_ut + tf.log(self.sum_exp_disp_ubar_ut + 1))
         # event_cnt = T,loss公式中
-        event_cnt = tf.reduce_sum(click_cnt)
-        loss = loss_sum / event_cnt
+        self.event_cnt = tf.reduce_sum(self.click_cnt)
+        loss = loss_sum / self.event_cnt
 
         # tf.reshape(exp_u_disp, [-1])转置,sarpse_tensor，index:指定非零元素位置,values:指定值,denseshape:矩阵维度
         #self.exp_disp_ubar_ut将display中每个item对应的
@@ -285,12 +289,12 @@ class UserModelPW(object):
         # tf.equal()返回与矩阵大小相同元素为bool的矩阵，相等的地方是True，
         # tf.cast类型转换，将bool类型转换成float类型
         precision_1_sum = tf.reduce_sum(tf.cast(tf.equal(argmax_click, self.argmax_disp), tf.float32))
-        precision_1 = precision_1_sum / event_cnt
+        precision_1 = precision_1_sum / self.event_cnt
         precision_2_sum = tf.reduce_sum(tf.cast(tf.equal(tf.reshape(argmax_click, [-1, 1]), tf.cast(top_2_disp, tf.int64)), tf.float32))
-        precision_2 = precision_2_sum / event_cnt
+        precision_2 = precision_2_sum / self.event_cnt
 
         self.lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * 0.05  # regularity
-        return loss, precision_1, precision_2, loss_sum, precision_1_sum, precision_2_sum, event_cnt
+        return loss, precision_1, precision_2, loss_sum, precision_1_sum, precision_2_sum, self.event_cnt
 
     def construct_model(self, is_training, reuse=False):
         global lossL2
@@ -299,6 +303,7 @@ class UserModelPW(object):
 
         if is_training:
             global_step = tf.Variable(0, trainable=False)
+            # tf.train.exponential_decay 学习率的指数衰减训练法
             learning_rate = tf.train.exponential_decay(self.lr, global_step, 100000, 0.96, staircase=True)
             opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
             train_op = opt.minimize(loss, global_step=global_step)

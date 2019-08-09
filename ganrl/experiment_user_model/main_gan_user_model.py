@@ -1,4 +1,3 @@
-
 import datetime
 import numpy as np
 import os
@@ -220,26 +219,29 @@ if __name__ == '__main__':
             news_cnt_sht, click_2d_subind, feature_clicked_tr = dataset.data_process_for_placeholder(training_user)
 
             # ###############################################
-            # a = sess.run([user_model.sum_click_u_bar_ut, user_model.sum_exp_disp_ubar_ut,
-            #               user_model.cumsum_tril_value, user_model.concat_history,
-            #               user_model.position_weight, user_model.u_disp,
-            #               user_model.sum_exp_disp_ubar_ut,
-            #               user_model.exp_disp_ubar_ut,
-            #               user_model.dense_exp_disp_util,
-            #               user_model.argmax_disp,
-            #               user_model.click_tensor,
-            #               ],
-            #              feed_dict={user_model.placeholder['disp_current_feature']: feature_tr,
-            #                                user_model.placeholder['item_size']: news_cnt_sht,
-            #                                user_model.placeholder['section_length']: sec_cnt,
-            #                                user_model.placeholder['click_indices']: click_2d,
-            #                                user_model.placeholder['click_values']: np.ones(len(click_2d), dtype=np.float32),
-            #                                user_model.placeholder['disp_indices']: np.array(disp_2d),
-            #                                user_model.placeholder['cumsum_tril_indices']: tril_ind,
-            #                                user_model.placeholder['cumsum_tril_value_indices']: np.array(tril_value_ind, dtype=np.int64),
-            #                                user_model.placeholder['click_2d_subindex']: click_2d_subind,
-            #                                user_model.placeholder['disp_2d_split_sec_ind']: disp_2d_split_sect,
-            #                                user_model.placeholder['Xs_clicked']: feature_clicked_tr})
+            a = sess.run([user_model.sum_click_u_bar_ut, user_model.sum_exp_disp_ubar_ut,
+                          user_model.cumsum_tril_value, user_model.concat_history,
+                          user_model.position_weight, user_model.u_disp,
+                          user_model.exp_disp_ubar_ut,
+                          user_model.dense_exp_disp_util,
+                          user_model.argmax_disp,
+                          user_model.click_tensor,
+                          user_model.disp_history_feature,
+                          user_model.cumsum_tril_matrix,
+                          user_model.click_cnt,user_model.event_cnt,
+                          user_model.concat_disp_features
+                          ],
+                         feed_dict={user_model.placeholder['disp_current_feature']: feature_tr,
+                                           user_model.placeholder['item_size']: news_cnt_sht,
+                                           user_model.placeholder['section_length']: sec_cnt,
+                                           user_model.placeholder['click_indices']: click_2d,
+                                           user_model.placeholder['click_values']: np.ones(len(click_2d), dtype=np.float32),
+                                           user_model.placeholder['disp_indices']: np.array(disp_2d),
+                                           user_model.placeholder['cumsum_tril_indices']: tril_ind,
+                                           user_model.placeholder['cumsum_tril_value_indices']: np.array(tril_value_ind, dtype=np.int64),
+                                           user_model.placeholder['click_2d_subindex']: click_2d_subind,
+                                           user_model.placeholder['disp_2d_split_sec_ind']: disp_2d_split_sect,
+                                           user_model.placeholder['Xs_clicked']: feature_clicked_tr})
             # ################################################
 
             sess.run(train_opt, feed_dict={user_model.placeholder['disp_current_feature']: feature_tr,

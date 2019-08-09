@@ -9,13 +9,13 @@ import numpy as np
 cmd_opt = argparse.ArgumentParser(description='Argparser for GAN user model for RL based recommendation')
 
 cmd_opt.add_argument('-data_folder', type=str, default='../../dropbox/', help='dataset folder')
-cmd_opt.add_argument('-dataset', type=str, default='tb', help='choose rsc, tb, or yelp')
+cmd_opt.add_argument('-dataset', type=str, default='rsc', help='choose rsc, tb, or yelp')
 cmd_opt.add_argument('-save_dir', type=str, default='./scratch', help='save folder')
 
 cmd_opt.add_argument('-resplit', type=eval, default=False)
 
 cmd_opt.add_argument('-num_thread', type=int, default=10, help='number of threadings')
-cmd_opt.add_argument('-learning_rate', type=float, default=1e-3, help='learning rate')
+cmd_opt.add_argument('-learning_rate', type=float, default=0.0005, help='learning rate')
 cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
 cmd_opt.add_argument('-num_itrs', type=int, default=2000, help='num of iterations')
 

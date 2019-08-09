@@ -132,10 +132,15 @@ class Dataset(object):
 
             for u in user_set:
                 t_indice = []
-                # 因为本文中self.band_size定义成m，所以按照论文中写的，状态是(t-m)到(t-1)的item，所以
+                # 因为本文中self.band_size定义成m，所以按照论文中写的，状态是(t-m)到(t-1)的item，
+                # kk=t-1(user中不包含最后一次tau)
+                # 最终的t_indice就是一个(t(+全局事件)-1)维的下三角矩阵的元素的序号(不包含对角线)
+                # 当self.data_time[u]==1的时候，没法产生历史点击记录，就删除了
                 for kk in range(min(self.band_size-1, self.data_time[u]-1)):
                     t_indice += map(lambda x: [x + kk+1 + sec_cnt_x, x + sec_cnt_x], np.arange(self.data_time[u] - (kk+1)))
+                    # print("")
 
+                # 每个time对应的下三角矩阵元素序号的和
                 tril_indice += t_indice
                 tril_value_indice += map(lambda x: (x[0] - x[1] - 1), t_indice)
 
@@ -183,6 +188,7 @@ class Dataset(object):
 
             click_sub_index = []
 
+            # max_time user_set中发生最多Tau的user的Tau
             for u in user_set:
                 max_time = max(max_time, self.data_time[u])
 
